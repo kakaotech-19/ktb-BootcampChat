@@ -27,24 +27,20 @@ jobs:
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          echo "@goorm-dev:registry=https://npm.pkg.github.com/" > .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> .npmrc
+          echo "@goorm-dev:registry=https://npm.pkg.github.com/" > $GITHUB_WORKSPACE/.npmrc
+          echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> $GITHUB_WORKSPACE/.npmrc
 
       - name: Debug NPM_TOKEN
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           echo "NPM_TOKEN=${NPM_TOKEN}"
-      
-      - name: Verify .npmrc file
-        run: |
-          cat .npmrc
         
       # Install dependencies and Build Next.js application
       - name: Install dependencies and Build Next.js application
         run: |
           cd frontend
-          npm install --legacy-peer-deps
+          npm install --userconfig=$GITHUB_WORKSPACE/.npmrc
           npm run build
 
       # Sync the output directory to S3
