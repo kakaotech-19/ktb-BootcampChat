@@ -31,15 +31,10 @@ jobs:
           echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> .npmrc
 
       - name: Debug NPM_TOKEN
-        run: |
-          echo "NPM_TOKEN=${NPM_TOKEN}"
-
-      - name: Test NPM_TOKEN
         env:
-          NPM_TOKEN: test-token
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           echo "NPM_TOKEN=${NPM_TOKEN}"
-        
       
       - name: Verify .npmrc file
         run: |
