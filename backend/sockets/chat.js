@@ -5,6 +5,7 @@ const File = require("../models/File");
 const jwt = require("jsonwebtoken");
 const { jwtSecret } = require("../config/keys");
 const redisUtils = require("../utils/redisUtils");
+const redisChat = require("../utils/redisChat");
 const SessionService = require("../services/sessionService");
 const aiService = require("../services/aiService");
 
@@ -31,13 +32,20 @@ module.exports = function (io) {
 
   // 메시지 일괄 로드 함수 개선
   const loadMessages = async (socket, roomId, before, limit = BATCH_SIZE) => {
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => {
-        reject(new Error("Message loading timed out"));
-      }, MESSAGE_LOAD_TIMEOUT);
-    });
-
     try {
+      const cachedMessages = redisChat.RedisChat.loadCachedMessages(
+        roomId,
+        before,
+        limit
+      );
+      if (cachedMessages) return cachedMessages;
+
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error("Message loading timed out"));
+        }, MESSAGE_LOAD_TIMEOUT);
+      });
+
       // 쿼리 구성
       const query = { room: roomId };
       if (before) {
@@ -473,7 +481,7 @@ module.exports = function (io) {
           throw new Error("메시지 데이터가 없습니다.");
         }
 
-        const { room, type, content, fileData } = messageData;
+        const { room, type, content, fileData } = messageData; // room == roomId
 
         if (!room) {
           throw new Error("채팅방 정보가 없습니다.");
@@ -569,6 +577,7 @@ module.exports = function (io) {
           { path: "file", select: "filename originalname mimetype size" },
         ]);
 
+        redisChat.RedisChat.addNewMessage(room, mseeage);
         io.to(room).emit("message", message);
 
         // AI 멘션이 있는 경우 AI 응답 생성
