@@ -22,17 +22,20 @@ jobs:
         with:
           node-version: 18
 
-      # Install dependencies
-      # Build the Next.js application
-      - name: Install dependencies and Build Next.js application
+      # Setup NPM authentication
+      - name: Setup NPM authentication
         env:
-            NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-            echo "@goorm-dev:registry=https://npm.pkg.github.com/" > .npmrc
-            echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> .npmrc
-            cd frontend
-            npm install
-            npm run build
+          echo "@goorm-dev:registry=https://npm.pkg.github.com/" > ~/.npmrc
+          echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
+
+      # Install dependencies and Build Next.js application
+      - name: Install dependencies and Build Next.js application
+        run: |
+          cd frontend
+          npm install --legacy-peer-deps
+          npm run build
 
       # Sync the output directory to S3
       - name: Deploy to S3
