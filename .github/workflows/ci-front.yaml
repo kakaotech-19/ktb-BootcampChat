@@ -29,12 +29,13 @@ jobs:
         run: |
           echo "@goorm-dev:registry=https://npm.pkg.github.com/" > $GITHUB_WORKSPACE/.npmrc
           echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> $GITHUB_WORKSPACE/.npmrc
-
-      - name: Debug NPM_TOKEN
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    
+      # Create .env.local file
+      - name: Create .env.local file
         run: |
-          echo "NPM_TOKEN=${NPM_TOKEN}"
+          echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" >> ./frontend/.env.local
+          echo "NEXT_PUBLIC_ENCRYPTION_KEY=${{ secrets.NEXT_PUBLIC_ENCRYPTION_KEY }}" >> ./frontend/.env.local
+          echo "NEXT_PUBLIC_PASSWORD_SALT=${{ secrets.NEXT_PUBLIC_PASSWORD_SALT }}" >> ./frontend/.env.local
         
       # Install dependencies and Build Next.js application
       - name: Install dependencies and Build Next.js application
@@ -51,4 +52,4 @@ jobs:
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
           cd frontend
-          aws s3 sync ./out s3://comp-nextjs-app/ --delete --acl public-read
+          aws s3 sync ./out s3://comp-nextjs-app/ --delete
