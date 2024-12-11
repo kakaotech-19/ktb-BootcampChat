@@ -27,9 +27,17 @@ jobs:
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          echo "@goorm-dev:registry=https://npm.pkg.github.com/" > ~/.npmrc
-          echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> ~/.npmrc
+          echo "@goorm-dev:registry=https://npm.pkg.github.com/" > .npmrc
+          echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> .npmrc
 
+      - name: Debug NPM_TOKEN
+        run: |
+          echo "NPM_TOKEN=${NPM_TOKEN}"
+      
+      - name: Verify .npmrc file
+        run: |
+          cat .npmrc
+        
       # Install dependencies and Build Next.js application
       - name: Install dependencies and Build Next.js application
         run: |
@@ -44,4 +52,5 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
+          cd frontend
           aws s3 sync ./out s3://comp-nextjs-app/ --delete --acl public-read
