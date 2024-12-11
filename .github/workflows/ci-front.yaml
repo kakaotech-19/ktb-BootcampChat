@@ -41,7 +41,7 @@ jobs:
       - name: Install dependencies and Build Next.js application
         run: |
           cd frontend
-          npm install --userconfig=$GITHUB_WORKSPACE/.npmrc
+          npm install --legacy-peer-deps --userconfig=$GITHUB_WORKSPACE/.npmrc
           npm run build
 
       # Sync the output directory to S3
