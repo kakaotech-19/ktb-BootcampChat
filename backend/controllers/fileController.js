@@ -83,7 +83,7 @@ const getFileFromRequest = async (req) => {
   }
 };
 
-exports.uploadFileToS3 = async (req, res) => {
+exports.uploadFileFromS3 = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -192,6 +192,58 @@ exports.uploadFile = async (req, res) => {
   }
 };
 
+exports.downloadFileFromS3 = async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    if (!filename) {
+      throw new Error("Invalid filename");
+    }
+
+    const file = await File.findOne({ filename });
+    if (!file) {
+      throw new Error("File not found in database");
+    }
+
+    const message = await Message.findOne({ file: file._id });
+    if (!message) {
+      throw new Error("File message not found");
+    }
+
+    const room = await Room.findOne({
+      _id: message.room,
+      participants: req.user.id,
+    });
+
+    if (!room) {
+      throw new Error("Unauthorized access");
+    }
+
+    res.set({
+      "Content-Type": file.mimetype,
+      "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(
+        file.originalname
+      )}`,
+      "Content-Length": file.size,
+    });
+
+    // S3에서 파일 스트리밍
+    const s3Key = `chat-files/${file.user}/${file.filename}`;
+    const s3Response = await s3Manager.getFileStream(s3Key);
+
+    if (!s3Response.Body) {
+      throw new Error("Failed to get file stream from S3");
+    }
+
+    s3Response.Body.pipe(res);
+  } catch (error) {
+    console.error("Download file error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "파일 다운로드 중 오류가 발생했습니다.",
+    });
+  }
+};
+
 exports.downloadFile = async (req, res) => {
   try {
     const { file, filePath } = await getFileFromRequest(req);
@@ -220,6 +272,66 @@ exports.downloadFile = async (req, res) => {
     fileStream.pipe(res);
   } catch (error) {
     handleFileError(error, res);
+  }
+};
+
+exports.viewFileFromS3 = async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    if (!filename) {
+      throw new Error("Invalid filename");
+    }
+
+    const file = await File.findOne({ filename });
+    if (!file) {
+      throw new Error("File not found in database");
+    }
+
+    const message = await Message.findOne({ file: file._id });
+    if (!message) {
+      throw new Error("File message not found");
+    }
+
+    const room = await Room.findOne({
+      _id: message.room,
+      participants: req.user.id,
+    });
+
+    if (!room) {
+      throw new Error("Unauthorized access");
+    }
+
+    if (!file.isPreviewable()) {
+      return res.status(415).json({
+        success: false,
+        message: "미리보기를 지원하지 않는 파일 형식입니다.",
+      });
+    }
+
+    res.set({
+      "Content-Type": file.mimetype,
+      "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(
+        file.originalname
+      )}`,
+      "Content-Length": file.size,
+    });
+
+    // S3에서 파일 스트리밍
+    const s3Key = `chat-files/${file.user}/${file.filename}`;
+    console.log("Requesting S3 file:", s3Key);
+    const s3Response = await s3Manager.getFileStream(s3Key);
+
+    if (!s3Response.Body) {
+      throw new Error("Failed to get file stream from S3");
+    }
+
+    s3Response.Body.pipe(res);
+  } catch (error) {
+    console.error("View file error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "파일 미리보기 중 오류가 발생했습니다.",
+    });
   }
 };
 
