@@ -36,6 +36,8 @@ jobs:
           echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" >> ./frontend/.env.local
           echo "NEXT_PUBLIC_ENCRYPTION_KEY=${{ secrets.NEXT_PUBLIC_ENCRYPTION_KEY }}" >> ./frontend/.env.local
           echo "NEXT_PUBLIC_PASSWORD_SALT=${{ secrets.NEXT_PUBLIC_PASSWORD_SALT }}" >> ./frontend/.env.local
+          echo "NEXT_PUBLIC_AWS_REGION=${{ secrets.NEXT_PUBLIC_AWS_REGION }}" >> ./frontend/.env.local
+          echo "NEXT_PUBLIC_AWS_BUCKET_NAME=${{ secrets.NEXT_PUBLIC_AWS_BUCKET_NAME }}" >> ./frontend/.env.local
         
       # Install dependencies and Build Next.js application
       - name: Install dependencies and Build Next.js application
