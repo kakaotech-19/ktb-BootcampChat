@@ -16,7 +16,7 @@ module.exports = function (io) {
   // const messageQueues = new Map();  ok
   // const messageLoadRetries = new Map(); ok
   const BATCH_SIZE = 30; // 한 번에 로드할 메시지 수
-  const LOAD_DELAY = 300; // 메시지 로드 딜레이 (ms)
+  const LOAD_DELAY = 3000; // 메시지 로드 딜레이 (ms)
   const MAX_RETRIES = 3; // 최대 재시도 횟수
   const MESSAGE_LOAD_TIMEOUT = 10000; // 메시지 로드 타임아웃 (10초)
   const RETRY_DELAY = 2000; // 재시도 간격 (2초)
@@ -31,48 +31,57 @@ module.exports = function (io) {
   };
 
   // 메시지 일괄 로드 함수 개선
-  const loadMessages = async (socket, roomId, before, limit = BATCH_SIZE) => {
+  const firstLoadCharMessages = async (
+    socket,
+    roomId,
+    before,
+    limit = BATCH_SIZE
+  ) => {
     try {
-      const cachedMessages = redisChat.RedisChat.loadCachedMessages(
+      let dbMessages = await redisChat.RedisChat.loadCachedMessages(
         roomId,
         before,
         limit
       );
-      if (cachedMessages) return cachedMessages;
+      if (!dbMessages) {
+        // cache miss -> find message from mongodb
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            reject(new Error("Message loading timed out"));
+          }, MESSAGE_LOAD_TIMEOUT);
+        });
 
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => {
-          reject(new Error("Message loading timed out"));
-        }, MESSAGE_LOAD_TIMEOUT);
-      });
+        // 쿼리 구성
+        const query = { room: roomId };
+        if (before) {
+          query.timestamp = { $lt: new Date(before) };
+        }
 
-      // 쿼리 구성
-      const query = { room: roomId };
-      if (before) {
-        query.timestamp = { $lt: new Date(before) };
+        // 메시지 로드 with profileImage
+        dbMessages = await Promise.race([
+          Message.find(query)
+            .populate("sender", "name email profileImage")
+            .populate({
+              path: "file",
+              select: "filename originalname mimetype size",
+            })
+            .sort({ timestamp: -1 })
+            .limit(limit + 1)
+            .lean(),
+          timeoutPromise,
+        ]);
+
+        redisChat.RedisChat.cacheMessages(roomId, dbMessages);
+        console.log("chat cache miss, save caht from mongodb");
+      } else {
+        console.log("chat cache hit");
       }
-
-      // 메시지 로드 with profileImage
-      const messages = await Promise.race([
-        Message.find(query)
-          .populate("sender", "name email profileImage")
-          .populate({
-            path: "file",
-            select: "filename originalname mimetype size",
-          })
-          .sort({ timestamp: -1 })
-          .limit(limit + 1)
-          .lean(),
-        timeoutPromise,
-      ]);
-
       // 결과 처리
-      const hasMore = messages.length > limit;
-      const resultMessages = messages.slice(0, limit);
+      const hasMore = dbMessages.length > limit;
+      const resultMessages = dbMessages.slice(0, limit);
       const sortedMessages = resultMessages.sort(
         (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
       );
-
       // 읽음 상태 비동기 업데이트
       if (sortedMessages.length > 0 && socket.user) {
         const messageIds = sortedMessages.map((msg) => msg._id);
@@ -136,7 +145,7 @@ module.exports = function (io) {
         throw new Error("최대 재시도 횟수를 초과했습니다.");
       }
 
-      const result = await loadMessages(socket, roomId, before);
+      const result = await firstLoadCharMessages(socket, roomId, before);
       await redisUtils.RedisUtils.removeMessageRetries(retryKey);
       return result;
     } catch (error) {
@@ -427,7 +436,7 @@ module.exports = function (io) {
         await joinMessage.save();
 
         // 초기 메시지 로드
-        const messageLoadResult = await loadMessages(socket, roomId);
+        const messageLoadResult = await firstLoadCharMessages(socket, roomId);
         const { messages, hasMore, oldestTimestamp } = messageLoadResult;
 
         // 활성 스트리밍 메시지 조회
@@ -577,7 +586,7 @@ module.exports = function (io) {
           { path: "file", select: "filename originalname mimetype size" },
         ]);
 
-        redisChat.RedisChat.addNewMessage(room, mseeage);
+        redisChat.RedisChat.addNewMessage(room, message);
         io.to(room).emit("message", message);
 
         // AI 멘션이 있는 경우 AI 응답 생성

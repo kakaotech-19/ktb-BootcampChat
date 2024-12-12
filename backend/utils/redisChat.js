@@ -18,13 +18,16 @@ class RedisChat {
       // 각 메시지를 시간순으로 sorted set에 저장
       for (const message of messages) {
         const timestamp = new Date(message.timestamp).getTime();
-        pipeline.zadd(messagesKey, timestamp, JSON.stringify(message));
+        pipeline.zAdd(messagesKey, {
+          score: timestamp,
+          value: JSON.stringify(message),
+        });
       }
 
       // 만료시간 설정 (24시간)
       pipeline.expire(messagesKey, 86400);
       await pipeline.exec();
-
+      console.log("chat messages caching success");
       return true;
     } catch (error) {
       console.error("Error caching messages:", error);
@@ -38,14 +41,19 @@ class RedisChat {
       const messagesKey = this.getMessagesKey(roomId);
       const maxScore = before ? new Date(before).getTime() : "+inf";
 
-      // 시간순으로 메시지 조회
-      const messages = await redisClient.client.zrevrangebyscore(
+      const messages = await redisClient.client.zRangeByScore(
         messagesKey,
-        maxScore,
-        "-inf",
-        "LIMIT",
-        0,
-        limit
+        maxScore, // max
+        "-inf", // min
+        {
+          BY: "SCORE", // score 기준으로 조회
+          REV: true, // 역순 정렬
+          LIMIT: {
+            // 제한
+            offset: 0,
+            count: limit,
+          },
+        }
       );
 
       if (!messages?.length) return null;
@@ -65,11 +73,10 @@ class RedisChat {
       const timestamp = new Date(message.timestamp).getTime();
 
       // 메시지를 sorted set에 추가
-      await redisClient.client.zadd(
-        messagesKey,
-        timestamp,
-        JSON.stringify(message)
-      );
+      await redisClient.client.zAdd(messagesKey, {
+        score: timestamp,
+        value: JSON.stringify(message),
+      });
       return true;
     } catch (error) {
       console.error("Error adding new message:", error);
