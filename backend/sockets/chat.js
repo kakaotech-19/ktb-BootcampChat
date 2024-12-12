@@ -465,7 +465,7 @@ module.exports = function (io) {
           activeStreams,
         });
 
-        await redisChat.RedisChat.addNewMessage(roomId, joinMessage);
+        redisChat.RedisChat.addNewMessage(roomId, joinMessage);
         io.to(roomId).emit("message", joinMessage);
         io.to(roomId).emit("participantsUpdate", room.participants);
 
@@ -590,7 +590,7 @@ module.exports = function (io) {
           { path: "file", select: "filename originalname mimetype size" },
         ]);
 
-        await redisChat.RedisChat.addNewMessage(room, message);
+        redisChat.RedisChat.addNewMessage(room, message);
         io.to(room).emit("message", message);
 
         // AI 멘션이 있는 경우 AI 응답 생성
