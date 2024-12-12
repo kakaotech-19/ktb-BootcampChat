@@ -33,6 +33,11 @@ jobs:
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> backend/.env
           echo "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}" >> backend/.env
           echo "PASSWORD_SALT=${{ secrets.PASSWORD_SALT }}" >> backend/.env
+          echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> backend/.env
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}" >> backend/.env
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> backend/.env
+          echo "AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }}" >> backend/.env
+          echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" >> backend/.env
 
       - name: Build and push Docker image
         run: |
