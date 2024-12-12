@@ -434,6 +434,7 @@ module.exports = function (io) {
         });
 
         await joinMessage.save();
+        redisChat.RedisChat.addNewMessage(roomId, joinMessage);
 
         // 초기 메시지 로드
         const messageLoadResult = await firstLoadCharMessages(socket, roomId);
