@@ -27,7 +27,6 @@ class RedisChat {
 
       pipeline.EXPIRE(messagesKey, 86400); // EXPIRE로 변경
       await pipeline.exec();
-      console.log("chat messages cache save success");
       return true;
     } catch (error) {
       console.error("Error caching messages:", error);
@@ -38,22 +37,20 @@ class RedisChat {
   static async loadCachedMessages(roomId, before = null, limit = 30) {
     try {
       const messagesKey = this.getMessagesKey(roomId);
-      const maxScore = before ? new Date(before).getTime() : "inf";
-
-      const messages = await redisClient.client.ZRANGE(
-        // .client 제거
+      const maxScore = before ? new Date(before).getTime() : "+inf";
+      const messages = await redisClient.client.sendCommand([
+        "ZRANGE",
         messagesKey,
-        "-inf",
-        before ? `(${maxScore}` : maxScore,
-        {
-          REV: true,
-          BY: "SCORE",
-          LIMIT: {
-            offset: 0,
-            count: limit,
-          },
-        }
-      );
+        maxScore,
+        "0",
+        "BYSCORE",
+        "REV",
+        "LIMIT",
+        "0",
+        `${limit}`,
+      ]);
+
+      console.log("Found messages count:", messages?.length);
 
       if (!messages || messages.length === 0) return null;
 
@@ -89,7 +86,7 @@ class RedisChat {
   static async clearRoomCache(roomId) {
     try {
       const messagesKey = this.getMessagesKey(roomId);
-      await redisClient.DEL(messagesKey); // .client 제거, DEL로 변경
+      await redisClient.client.DEL(messagesKey); // .client 제거, DEL로 변경
       return true;
     } catch (error) {
       console.error("Error clearing room cache:", error);
