@@ -1,9 +1,9 @@
 const {
   S3Client,
+  GetObjectCommand,
   PutObjectCommand,
   DeleteObjectCommand,
 } = require("@aws-sdk/client-s3");
-const { Readable } = require("stream");
 
 class S3Manager {
   constructor() {
@@ -15,6 +15,20 @@ class S3Manager {
       },
     });
     this.bucketName = process.env.AWS_BUCKET_NAME;
+  }
+
+  // 스트림 형식으로 브라우저에 파일 전송
+  async getFileStream(key) {
+    try {
+      const command = new GetObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+      });
+      return await this.client.send(command);
+    } catch (error) {
+      console.error("S3 getFileStream error:", error);
+      throw error;
+    }
   }
 
   // async uploadFile(key, fileBuffer) {
