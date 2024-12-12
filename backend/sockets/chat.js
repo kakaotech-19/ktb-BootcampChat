@@ -31,13 +31,14 @@ module.exports = function (io) {
   };
 
   // 메시지 일괄 로드 함수 개선
-  const firstLoadCharMessages = async (
+  const loadChatMseeages = async (
     socket,
     roomId,
     before,
     limit = BATCH_SIZE
   ) => {
     try {
+      console.log("loadChatMessage before=" + before);
       let dbMessages = await redisChat.RedisChat.loadCachedMessages(
         roomId,
         before,
@@ -71,17 +72,19 @@ module.exports = function (io) {
           timeoutPromise,
         ]);
 
-        redisChat.RedisChat.cacheMessages(roomId, dbMessages);
-        console.log("chat cache miss, save caht from mongodb");
+        await redisChat.RedisChat.cacheMessages(roomId, dbMessages);
+        console.log("mongo save cache length=" + dbMessages.length);
+        console.log("chat CACHE MISS , save caht from mongodb");
       } else {
-        console.log("chat cache hit");
+        console.log("chat CACHE HIT");
       }
       // 결과 처리
-      const hasMore = dbMessages.length > limit;
+      const hasMore = dbMessages.length >= limit;
       const resultMessages = dbMessages.slice(0, limit);
       const sortedMessages = resultMessages.sort(
         (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
       );
+      console.log("hasMore=" + hasMore);
       // 읽음 상태 비동기 업데이트
       if (sortedMessages.length > 0 && socket.user) {
         const messageIds = sortedMessages.map((msg) => msg._id);
@@ -145,7 +148,7 @@ module.exports = function (io) {
         throw new Error("최대 재시도 횟수를 초과했습니다.");
       }
 
-      const result = await firstLoadCharMessages(socket, roomId, before);
+      const result = await loadChatMseeages(socket, roomId, before);
       await redisUtils.RedisUtils.removeMessageRetries(retryKey);
       return result;
     } catch (error) {
@@ -434,10 +437,9 @@ module.exports = function (io) {
         });
 
         await joinMessage.save();
-        redisChat.RedisChat.addNewMessage(roomId, joinMessage);
 
         // 초기 메시지 로드
-        const messageLoadResult = await firstLoadCharMessages(socket, roomId);
+        const messageLoadResult = await loadChatMseeages(socket, roomId);
         const { messages, hasMore, oldestTimestamp } = messageLoadResult;
 
         // 활성 스트리밍 메시지 조회
@@ -463,6 +465,7 @@ module.exports = function (io) {
           activeStreams,
         });
 
+        await redisChat.RedisChat.addNewMessage(roomId, joinMessage);
         io.to(roomId).emit("message", joinMessage);
         io.to(roomId).emit("participantsUpdate", room.participants);
 
@@ -587,7 +590,7 @@ module.exports = function (io) {
           { path: "file", select: "filename originalname mimetype size" },
         ]);
 
-        redisChat.RedisChat.addNewMessage(room, message);
+        await redisChat.RedisChat.addNewMessage(room, message);
         io.to(room).emit("message", message);
 
         // AI 멘션이 있는 경우 AI 응답 생성

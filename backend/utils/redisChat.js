@@ -37,23 +37,28 @@ class RedisChat {
   static async loadCachedMessages(roomId, before = null, limit = 30) {
     try {
       const messagesKey = this.getMessagesKey(roomId);
-      const maxScore = before ? new Date(before).getTime() : "+inf";
+      const maxScore = before ? new Date(before).getTime() - 1 : "+inf";
       const messages = await redisClient.client.sendCommand([
         "ZRANGE",
         messagesKey,
-        maxScore,
+        String(maxScore),
         "0",
         "BYSCORE",
         "REV",
         "LIMIT",
         "0",
         `${limit}`,
+        // "5",
       ]);
-
+      const result = messages.map((value) => JSON.parse(value));
+      console.log("result[0].time=" + result[0].timestamp);
+      console.log("result[last].time=" + result[result.length - 1].timestamp);
       console.log("Found messages count:", messages?.length);
 
       if (!messages || messages.length === 0) return null;
+      if (messages.length < 30) return null;
 
+      //   console.log("one messages=" + messages);
       return messages.map((msg) => JSON.parse(msg));
     } catch (error) {
       console.error("Error getting cached messages:", error);
