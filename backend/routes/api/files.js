@@ -11,14 +11,14 @@ router.post(
   auth,
   upload.single("file"),
   errorHandler,
-  fileController.uploadFileToS3
+  fileController.uploadFileFromS3
 );
 
 // 파일 다운로드
-router.get("/download/:filename", auth, fileController.downloadFile);
+router.get("/download/:filename", auth, fileController.downloadFileFromS3);
 
 // 파일 보기 (미리보기용)
-router.get("/view/:filename", auth, fileController.viewFile);
+router.get("/view/:filename", auth, fileController.viewFileFromS3);
 
 // 파일 삭제
 router.delete("/:id", auth, fileController.deleteFile);
