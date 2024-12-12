@@ -27,20 +27,7 @@ class RedisChat {
       }
 
       pipeline.EXPIRE(messagesKey, 86400); // EXPIRE로 변경
-
-      // 개수 확인 후 초과분 제거 (오래된 순으로)
-      pipeline.ZCARD(messagesKey);
       const results = await pipeline.EXEC();
-
-      const count = results[results.length - 1];
-      if (count > REDIS_MESSAGE_MAX_SIZE) {
-        // 초과된 만큼 가장 오래된 메시지부터 제거
-        await redisClient.client.ZREMRANGEBYRANK(
-          messagesKey,
-          0,
-          count - REDIS_MESSAGE_MAX_SIZE - 1
-        );
-      }
 
       return true;
     } catch (error) {
