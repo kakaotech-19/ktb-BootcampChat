@@ -1,0 +1,57 @@
+name: Deploy Next.js to S3
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'frontend/**'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up Node.js environment
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      # Setup NPM authentication
+      - name: Setup NPM authentication
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "@goorm-dev:registry=https://npm.pkg.github.com/" > $GITHUB_WORKSPACE/.npmrc
+          echo "//npm.pkg.github.com/:_authToken=${NPM_TOKEN}" >> $GITHUB_WORKSPACE/.npmrc
+    
+      # Create .env.local file
+      - name: Create .env.local file
+        run: |
+          echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" >> ./frontend/.env.local
+          echo "NEXT_PUBLIC_ENCRYPTION_KEY=${{ secrets.NEXT_PUBLIC_ENCRYPTION_KEY }}" >> ./frontend/.env.local
+          echo "NEXT_PUBLIC_PASSWORD_SALT=${{ secrets.NEXT_PUBLIC_PASSWORD_SALT }}" >> ./frontend/.env.local
+          echo "NEXT_PUBLIC_AWS_REGION=${{ secrets.NEXT_PUBLIC_AWS_REGION }}" >> ./frontend/.env.local
+          echo "NEXT_PUBLIC_AWS_BUCKET_NAME=${{ secrets.NEXT_PUBLIC_AWS_BUCKET_NAME }}" >> ./frontend/.env.local
+        
+      # Install dependencies and Build Next.js application
+      - name: Install dependencies and Build Next.js application
+        run: |
+          cd frontend
+          npm install --userconfig=$GITHUB_WORKSPACE/.npmrc
+          npm run build
+
+      # Sync the output directory to S3
+      - name: Deploy to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          cd frontend
+          aws s3 sync ./out s3://comp-nextjs-app/ --delete

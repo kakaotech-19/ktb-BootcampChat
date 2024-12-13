@@ -140,7 +140,6 @@ chmod +x run.sh
 
 # 서비스 중지
 ./run.sh stop
-
 # 서비스 재시작
 ./run.sh restart
 ```

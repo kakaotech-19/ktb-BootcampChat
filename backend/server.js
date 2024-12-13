@@ -23,6 +23,8 @@ const corsOptions = {
     "https://localhost:3000",
     "http://0.0.0.0:3000",
     "https://0.0.0.0:3000",
+    "https://chat.goorm-ktb-019.goorm.team",
+    "http://comp-nextjs-app.s3-website.ap-northeast-2.amazonaws.com",
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -95,6 +97,13 @@ app.use((err, req, res, next) => {
     message: err.message || "서버 에러가 발생했습니다.",
     ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
   });
+});
+
+// DEBUG
+app.use((req, res, next) => {
+  console.log("Request Origin:", req.headers.origin);
+  console.log("Request Method:", req.method);
+  next();
 });
 
 // 서버 시작
