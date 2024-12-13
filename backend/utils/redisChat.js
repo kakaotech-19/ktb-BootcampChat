@@ -1,6 +1,5 @@
 const redisClient = require("./redisClient");
 
-const REDIS_MESSAGE_MAX_SIZE = 600;
 const REDIS_CHAT_KEYS = {
   CHAT_MESSAGES: "chat:messages:",
 };

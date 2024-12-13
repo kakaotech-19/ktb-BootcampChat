@@ -8,13 +8,28 @@ const redisUtils = require("../utils/redisUtils");
 const redisChat = require("../utils/redisChat");
 const SessionService = require("../services/sessionService");
 const aiService = require("../services/aiService");
+const { createAdapter } = require("@socket.io/redis-adapter");
+const redisClient = require("../utils/redisClient");
 
-module.exports = function (io) {
+module.exports = async function (io) {
   // const connectedUsers = new Map(); ok
   // const streamingSessions = new Map(); ok
   // const userRooms = new Map(); ok
   // const messageQueues = new Map();  ok
   // const messageLoadRetries = new Map(); ok
+
+  // Redis Adapter 설정
+  try {
+    const pubClient = await redisClient.connect();
+    const subClient = pubClient.duplicate();
+    await subClient.connect();
+
+    io.adapter(createAdapter(pubClient, subClient));
+    console.log("Socket.IO Redis Adapter initialized");
+  } catch (error) {
+    console.error("Failed to initialize Socket.IO Redis Adapter:", error);
+  }
+
   const BATCH_SIZE = 30; // 한 번에 로드할 메시지 수
   const LOAD_DELAY = 3000; // 메시지 로드 딜레이 (ms)
   const MAX_RETRIES = 3; // 최대 재시도 횟수

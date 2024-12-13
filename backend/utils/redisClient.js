@@ -11,6 +11,32 @@ class RedisClient {
     this.retryDelay = 5000;
   }
 
+  async duplicate() {
+    const duplicatedClient = Redis.createClient({
+      url: `redis://${redisHost}:${redisPort}`,
+      socket: {
+        host: redisHost,
+        port: redisPort,
+        reconnectStrategy: (retries) => {
+          if (retries > this.maxRetries) {
+            return null;
+          }
+          return Math.min(retries * 50, 2000);
+        },
+      },
+    });
+
+    duplicatedClient.on("connect", () => {
+      console.log("Redis Duplicate Client Connected");
+    });
+
+    duplicatedClient.on("error", (err) => {
+      console.error("Redis Duplicate Client Error:", err);
+    });
+
+    return duplicatedClient;
+  }
+
   async connect() {
     if (this.isConnected && this.client) {
       return this.client;

@@ -74,7 +74,14 @@ app.use("/api", routes);
 
 // Socket.IO 설정
 const io = socketIO(server, { cors: corsOptions });
-require("./sockets/chat")(io);
+(async () => {
+  try {
+    await require("./sockets/chat")(io);
+    console.log("Socket.IO chat handler initialized successfully");
+  } catch (error) {
+    console.error("Failed to initialize Socket.IO chat handler:", error);
+  }
+})();
 
 // Socket.IO 객체 전달
 initializeSocket(io);
